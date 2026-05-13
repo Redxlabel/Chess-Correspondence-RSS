@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>♟ Шахматы по переписке</title>
+    <link>https://lichess.org</link>
+    <description>Ходы противников на chess.com и lichess.org</description>
+    <language>ru</language>
+    <lastBuildDate>Wed, 13 May 2026 06:25:59 +0000</lastBuildDate>
+    <ttl>60</ttl>
+  <item>
+    <title>Нет партий, ожидающих твоего хода</title>
+    <link>https://lichess.org</link>
+    <guid isPermaLink="false">no-games-Wed, 13 May 2026 06:25:59 +0000</guid>
+    <pubDate>Wed, 13 May 2026 06:25:59 +0000</pubDate>
+    <description>Все противники думают, или активных партий нет.</description>
+  </item>
+  </channel>
+</rss>
