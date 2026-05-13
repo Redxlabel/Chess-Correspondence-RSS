@@ -1,0 +1,47 @@
+name: Update Chess RSS Feed
+
+on:
+  schedule:
+    # Запускается каждый час (можно изменить расписание)
+    # Формат: минута час день месяц день_недели (UTC)
+    # Примеры:
+    #   "0 * * * *"    — каждый час
+    #   "0 7 * * *"    — раз в день в 7:00 UTC (9:00 по Цюриху летом)
+    #   "0 7,13 * * *" — дважды в день: в 9:00 и 15:00 по Цюриху
+    - cron: "0 * * * *"
+
+  # Позволяет запускать вручную из вкладки Actions на GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: write   # нужно для коммита RSS-файла обратно в репо
+
+jobs:
+  update-feed:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Скрипт использует только стандартную библиотеку — pip не нужен
+
+      - name: Generate RSS feed
+        env:
+          CHESSCOM_USERNAME: ${{ secrets.CHESSCOM_USERNAME }}
+          LICHESS_USERNAME:  ${{ secrets.LICHESS_USERNAME }}
+        run: python generate_rss.py
+
+      - name: Commit and push updated feed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/feed.xml state.json
+          # Коммитим только если есть изменения
+          git diff --cached --quiet || git commit -m "chore: update chess RSS feed [skip ci]"
+          git push
