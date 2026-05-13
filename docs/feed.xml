@@ -5,14 +5,14 @@
     <link>https://lichess.org</link>
     <description>Ходы противников на chess.com и lichess.org</description>
     <language>ru</language>
-    <lastBuildDate>Wed, 13 May 2026 06:25:59 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 13 May 2026 19:48:09 +0000</lastBuildDate>
     <ttl>60</ttl>
   <item>
-    <title>Нет партий, ожидающих твоего хода</title>
-    <link>https://lichess.org</link>
-    <guid isPermaLink="false">no-games-Wed, 13 May 2026 06:25:59 +0000</guid>
-    <pubDate>Wed, 13 May 2026 06:25:59 +0000</pubDate>
-    <description>Все противники думают, или активных партий нет.</description>
+    <title>🆕 chess.com | vs https://api.chess.com/pub/player/cdielsi (ты black) → a5</title>
+    <link>https://www.chess.com/game/daily/967205817</link>
+    <guid isPermaLink="false">chess.com:967205817:a5</guid>
+    <pubDate>Wed, 13 May 2026 19:48:09 +0000</pubDate>
+    <description><![CDATA[Противник https://api.chess.com/pub/player/cdielsi сделал ход: <b>a5</b>. Всего ходов в партии: 167. Твой цвет: black. Твой ход!]]></description>
   </item>
   </channel>
 </rss>
