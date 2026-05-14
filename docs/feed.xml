@@ -5,13 +5,13 @@
     <link>https://lichess.org</link>
     <description>Ходы противников на chess.com и lichess.org</description>
     <language>ru</language>
-    <lastBuildDate>Thu, 14 May 2026 09:30:10 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 14 May 2026 11:47:50 +0000</lastBuildDate>
     <ttl>60</ttl>
   <item>
     <title>Нет партий, ожидающих твоего хода</title>
     <link>https://lichess.org</link>
-    <guid isPermaLink="false">no-games-Thu, 14 May 2026 09:30:10 +0000</guid>
-    <pubDate>Thu, 14 May 2026 09:30:10 +0000</pubDate>
+    <guid isPermaLink="false">no-games-Thu, 14 May 2026 11:47:50 +0000</guid>
+    <pubDate>Thu, 14 May 2026 11:47:50 +0000</pubDate>
     <description><![CDATA[Все противники думают, или активных партий нет.]]></description>
   </item>
   </channel>
