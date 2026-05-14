@@ -44,4 +44,5 @@ jobs:
           git add docs/feed.xml state.json
           # Коммитим только если есть изменения
           git diff --cached --quiet || git commit -m "chore: update chess RSS feed [skip ci]"
+          git pull --rebase origin main
           git push
