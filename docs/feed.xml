@@ -5,14 +5,21 @@
     <link>https://lichess.org</link>
     <description>Ходы противников на chess.com и lichess.org</description>
     <language>ru</language>
-    <lastBuildDate>Thu, 14 May 2026 20:25:34 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 14 May 2026 21:04:26 +0000</lastBuildDate>
     <ttl>60</ttl>
   <item>
-    <title>Нет партий, ожидающих твоего хода</title>
-    <link>https://lichess.org</link>
-    <guid isPermaLink="false">no-games-Thu, 14 May 2026 20:25:34 +0000</guid>
-    <pubDate>Thu, 14 May 2026 20:25:34 +0000</pubDate>
-    <description><![CDATA[Все противники думают, или активных партий нет.]]></description>
+    <title>🆕 chess.com | vs zuomanni (ты black) → c5</title>
+    <link>https://www.chess.com/game/daily/963228817</link>
+    <guid isPermaLink="false">chess.com:963228817:c5</guid>
+    <pubDate>Thu, 14 May 2026 21:04:26 +0000</pubDate>
+    <description><![CDATA[Противник <b>zuomanni</b> сделал ход: <b>c5</b>.<br/>Ходов в партии: 68. Твой цвет: black. Твой ход!]]></description>
+  </item>
+  <item>
+    <title>🆕 chess.com | vs cdielsi (ты black) → a5</title>
+    <link>https://www.chess.com/game/daily/967205817</link>
+    <guid isPermaLink="false">chess.com:967205817:a5</guid>
+    <pubDate>Thu, 14 May 2026 21:04:26 +0000</pubDate>
+    <description><![CDATA[Противник <b>cdielsi</b> сделал ход: <b>a5</b>.<br/>Ходов в партии: 167. Твой цвет: black. Твой ход!]]></description>
   </item>
   </channel>
 </rss>
