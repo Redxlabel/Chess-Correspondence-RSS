@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Chess Correspondence RSS Generator
-Fetches ongoing games from chess.com and lichess.org,
-generates an RSS feed with opponent moves.
+chess.com + lichess.org → RSS feed
 """
 
 import json
@@ -31,89 +30,107 @@ def fetch_json(url: str, headers: dict = None) -> dict | list | None:
         return None
 
 
-def extract_username(player) -> str:
-    if isinstance(player, str):
-        return player.lower()
-    if isinstance(player, dict):
-        return player.get("username", "").lower()
-    return ""
+def fen_active_color(fen: str) -> str:
+    """Второе поле FEN — цвет активного игрока: 'w' или 'b'."""
+    parts = fen.split()
+    return parts[1] if len(parts) > 1 else ""
+
+
+def username_from_url(url: str) -> str:
+    """https://api.chess.com/pub/player/erik → 'erik'"""
+    return url.rstrip("/").split("/")[-1].lower()
 
 
 # ─── chess.com ────────────────────────────────
 def get_chesscom_games(username: str) -> list[dict]:
+    """
+    Используем /games/to-move — специальный endpoint chess.com,
+    который возвращает ТОЛЬКО партии где сейчас ход игрока.
+    Затем для каждой партии получаем детали (FEN, PGN, противника)
+    из /games.
+    """
     if not username:
         return []
 
-    data = fetch_json(
-        f"https://api.chess.com/pub/player/{username}/games",
-        headers={"Accept": "application/json"},
-    )
-    if not data:
+    # Шаг 1: получаем список партий где наш ход
+    to_move = fetch_json(f"https://api.chess.com/pub/player/{username}/games/to-move")
+    if not to_move:
         return []
 
-    games = []
-    for g in data.get("games", []):
-        # Только дейли-партии (correspondence) — отсекаем задачи, тренера и пр.
+    to_move_urls = {
+        g["url"] for g in to_move.get("games", [])
+        if g.get("move_by", 0) != 0  # move_by=0 означает draw offer, не наш ход
+    }
+    if not to_move_urls:
+        return []
+
+    # Шаг 2: получаем полные данные всех текущих партий
+    all_games = fetch_json(f"https://api.chess.com/pub/player/{username}/games")
+    if not all_games:
+        return []
+
+    me     = username.lower()
+    result = []
+
+    for g in all_games.get("games", []):
+        # Только daily (correspondence)
         if g.get("time_class") != "daily":
             continue
-        # Должны быть оба игрока и поле fen (признак настоящей партии)
+        # Только партии где наш ход
+        if g.get("url") not in to_move_urls:
+            continue
+        # Нужен FEN и PGN
         if not g.get("fen") or not g.get("pgn"):
             continue
-        # Поле turn должно быть "white" или "black"
-        turn = g.get("turn", "")
-        if turn not in ("white", "black"):
-            continue
 
-        white = extract_username(g.get("white", {}))
-        black = extract_username(g.get("black", {}))
-        me    = username.lower()
-
-        # Если нас нет ни среди белых, ни среди чёрных — пропускаем
-        if me not in (white, black):
-            continue
-
+        # white и black — строки-URL: "https://api.chess.com/pub/player/username"
+        white = username_from_url(str(g.get("white", "")))
+        black = username_from_url(str(g.get("black", "")))
         my_color      = "white" if white == me else "black"
-        opponent_name = black   if my_color == "white" else white
+        opponent_name = black if my_color == "white" else white
 
-        # Наш ход → противник только что походил
-        if turn == my_color:
-            pgn       = g.get("pgn", "")
-            last_move = extract_last_move_pgn(pgn)
-            games.append({
-                "source":    "chess.com",
-                "game_id":   str(g.get("url", "")).split("/")[-1],
-                "url":       g.get("url", ""),
-                "opponent":  opponent_name or "opponent",
-                "my_color":  my_color,
-                "last_move": last_move,
-                "pgn":       pgn,
-            })
+        pgn      = g.get("pgn", "")
+        game_url = g.get("url", "")
+        result.append({
+            "source":    "chess.com",
+            "game_id":   game_url.rstrip("/").split("/")[-1],
+            "url":       game_url,
+            "opponent":  opponent_name or "opponent",
+            "my_color":  my_color,
+            "last_move": extract_last_move_pgn(pgn),
+            "pgn":       pgn,
+        })
 
-    return games
+    return result
 
 
 def extract_last_move_pgn(pgn: str) -> str:
-    moves_text  = re.sub(r"\{[^}]*\}", "", pgn)
-    moves_text  = re.sub(r"\[[^\]]*\]", "", moves_text)
-    tokens      = moves_text.split()
-    move_tokens = [
-        t for t in tokens
+    text   = re.sub(r"\{[^}]*\}", "", pgn)
+    text   = re.sub(r"\[[^\]]*\]", "", text)
+    tokens = [
+        t for t in text.split()
         if not re.match(r"^\d+\.+$", t)
         and not t.startswith("$")
         and t not in ("1-0", "0-1", "1/2-1/2", "*")
     ]
-    return move_tokens[-1].rstrip("+-#") if move_tokens else "?"
+    return tokens[-1].rstrip("+-#") if tokens else "?"
 
 
 # ─── lichess ──────────────────────────────────
 def get_lichess_games(username: str) -> list[dict]:
+    """
+    Используем lastFen=true — FEN последней позиции.
+    Второе поле FEN указывает чей ход ('w' или 'b').
+    Это самый надёжный способ определить чей ход.
+    """
     if not username:
         return []
 
     url = (
         f"https://lichess.org/api/games/user/{username}"
-        f"?ongoing=true&moves=true&clocks=false&evals=false"
-        f"&opening=false&perfType=correspondence&lastFen=true"
+        f"?ongoing=true&finished=false&moves=true"
+        f"&clocks=false&evals=false&opening=false"
+        f"&perfType=correspondence&lastFen=true"
     )
     req = urllib.request.Request(url)
     req.add_header("User-Agent", "chess-rss-bot/1.0")
@@ -121,7 +138,7 @@ def get_lichess_games(username: str) -> list[dict]:
 
     games = []
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=20) as resp:
             for raw_line in resp:
                 line = raw_line.decode().strip()
                 if not line:
@@ -131,36 +148,34 @@ def get_lichess_games(username: str) -> list[dict]:
                 except json.JSONDecodeError:
                     continue
 
-                # Только незавершённые партии
                 if g.get("status") not in ("started", "created"):
                     continue
 
                 players       = g.get("players", {})
+                # Согласно схеме: players.white.user.name
                 white_name    = players.get("white", {}).get("user", {}).get("name", "")
                 black_name    = players.get("black", {}).get("user", {}).get("name", "")
                 me            = username.lower()
                 my_color      = "white" if white_name.lower() == me else "black"
                 opponent_name = black_name if my_color == "white" else white_name
 
-                # Определяем чей ход по количеству ходов:
-                # чётное число ходов → ходят белые, нечётное → ходят чёрные
-                moves_str  = g.get("moves", "")
-                moves_list = moves_str.split() if moves_str.strip() else []
-                move_count = len(moves_list)
-                whites_turn = (move_count % 2 == 0)
-                its_my_turn = (my_color == "white" and whites_turn) or \
-                              (my_color == "black" and not whites_turn)
+                # lastFen: "rnbqkbnr/pp... b KQkq - 0 1"
+                #                        ^ 'w'=белые ходят, 'b'=чёрные
+                last_fen     = g.get("lastFen", "")
+                active_color = fen_active_color(last_fen)
+                whos_turn    = "white" if active_color == "w" else "black"
 
-                if its_my_turn and move_count > 0:
-                    last_move = moves_list[-1]
+                moves_list = g.get("moves", "").split() if g.get("moves", "").strip() else []
+
+                if whos_turn == my_color and moves_list:
                     games.append({
                         "source":    "lichess",
                         "game_id":   g.get("id", ""),
                         "url":       f"https://lichess.org/{g.get('id', '')}",
                         "opponent":  opponent_name or "opponent",
                         "my_color":  my_color,
-                        "last_move": last_move,
-                        "pgn":       moves_str,
+                        "last_move": moves_list[-1],
+                        "pgn":       g.get("moves", ""),
                     })
 
     except Exception as e:
@@ -188,38 +203,34 @@ def game_key(game: dict) -> str:
 
 
 # ─── RSS ──────────────────────────────────────
-def escape_xml(text: str) -> str:
-    return (
-        text.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-    )
+def esc(text: str) -> str:
+    return (text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def build_rss(games: list[dict], new_game_keys: set) -> str:
+def build_rss(games: list[dict], new_keys: set) -> str:
     now = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
-
     items = []
+
     for g in games:
         key        = game_key(g)
-        badge      = "🆕 " if key in new_game_keys else ""
+        badge      = "🆕 " if key in new_keys else ""
         move_count = len(g["pgn"].split()) if g["pgn"] else "?"
         title      = (
             f"{badge}{g['source']} | vs {g['opponent']} "
             f"(ты {g['my_color']}) → {g['last_move']}"
         )
-        description = (
-            f"Противник {g['opponent']} сделал ход: <b>{escape_xml(g['last_move'])}</b>. "
-            f"Всего ходов в партии: {move_count}. "
-            f"Твой цвет: {g['my_color']}. Твой ход!"
+        desc = (
+            f"Противник <b>{esc(g['opponent'])}</b> сделал ход: "
+            f"<b>{esc(g['last_move'])}</b>.<br/>"
+            f"Ходов в партии: {move_count}. Твой цвет: {g['my_color']}. Твой ход!"
         )
         items.append(f"""  <item>
-    <title>{escape_xml(title)}</title>
-    <link>{escape_xml(g['url'])}</link>
-    <guid isPermaLink="false">{escape_xml(key)}:{escape_xml(g['last_move'])}</guid>
+    <title>{esc(title)}</title>
+    <link>{esc(g['url'])}</link>
+    <guid isPermaLink="false">{esc(key)}:{esc(g['last_move'])}</guid>
     <pubDate>{now}</pubDate>
-    <description><![CDATA[{description}]]></description>
+    <description><![CDATA[{desc}]]></description>
   </item>""")
 
     if not items:
@@ -250,13 +261,13 @@ def build_rss(games: list[dict], new_game_keys: set) -> str:
 def main():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Fetching games...")
 
-    chesscom_games = get_chesscom_games(CHESSCOM_USERNAME)
-    print(f"  chess.com: {len(chesscom_games)} game(s) awaiting your move")
+    cc = get_chesscom_games(CHESSCOM_USERNAME)
+    print(f"  chess.com: {len(cc)} game(s) awaiting your move")
 
-    lichess_games = get_lichess_games(LICHESS_USERNAME)
-    print(f"  lichess:   {len(lichess_games)} game(s) awaiting your move")
+    li = get_lichess_games(LICHESS_USERNAME)
+    print(f"  lichess:   {len(li)} game(s) awaiting your move")
 
-    all_games = chesscom_games + lichess_games
+    all_games = cc + li
     state     = load_state()
     new_keys  = set()
     new_state = {}
